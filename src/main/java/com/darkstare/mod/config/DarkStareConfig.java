@@ -177,8 +177,7 @@ public class DarkStareConfig {
     public static void register() {
         ModLoadingContext.get().registerConfig(
             net.minecraftforge.fml.config.ModConfig.Type.CLIENT,
-            DarkStareConfig.spec(),
-            "darkstare.cfg"
+            DarkStareConfig.spec()
         );
     }
 }
