@@ -51,7 +51,11 @@ public class ShadowFiguresRenderer {
         Tesselator tess = Tesselator.getInstance();
         BufferBuilder buf = tess.getBuilder();
 
+        // Batch all shadow figures into a single draw call for correctness and performance.
         int drawn = 0;
+        boolean anyVertex = false;
+        buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
         for (int i = 0; i < maxFigures * 4 && drawn < maxFigures; i++) {
             if (RAND.nextFloat() > figureChance) continue;
 
@@ -98,8 +102,8 @@ public class ShadowFiguresRenderer {
             // === HEAD (oval-ish shape) ===
             float headSize = figWidth * 1.1f;
             float headY = fy - figHeight * 0.45f + swayX * 0.8f;
-            buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
             drawQuad(buf, fx + swayX * 0.8f, headY, headSize, headSize * 1.2f, r, g, b, alpha * flicker * 0.95f);
+            anyVertex = true;
 
             // === NECK (thin connection) ===
             float neckWidth = figWidth * 0.35f;
@@ -148,8 +152,11 @@ public class ShadowFiguresRenderer {
             drawQuad(buf, rightLegX, torsoBottom + legLength / 2f,
                      legWidth, legLength, r, g, b, alpha * flicker * 0.9f);
 
-            tess.end();
             drawn++;
+        }
+
+        if (anyVertex) {
+            tess.end();
         }
 
         RenderSystem.enableDepthTest();

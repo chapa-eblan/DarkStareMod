@@ -82,18 +82,22 @@ public class AfterimageRenderer {
         Tesselator tess = Tesselator.getInstance();
         BufferBuilder buf = tess.getBuilder();
 
+        // Batch all afterimage triangles into a single draw call for correctness and performance.
+        boolean any = false;
+        buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+
         for (int i = 0; i < MAX_AFTERIMAGES; i++) {
             if (afterimageAlpha[i] <= 0.001f) continue;
 
             float alpha = afterimageAlpha[i];
             float size = afterimageSize[i];
 
-            // Afterimages have a sickly color — dark with slight red/purple tint
-            float r = 0.15f + (float)(Math.random() * 0.1f);
+            // Deterministic color per afterimage to avoid frame-to-frame jitter.
+            long seed = i * 7919L + (now & 0x3FFFFF);
+            float r = 0.15f + (float)((seed & 0xFFFFF) / (double)0xFFFFF * 0.1f);
             float g = 0.05f;
-            float b = 0.12f + (float)(Math.random() * 0.08f);
+            float b = 0.12f + (float)(((seed >> 16) & 0x3FFFFF) / (double)0x3FFFFF * 0.08f);
 
-            // Draw as a soft, distorted circle using concentric rings
             int rings = 4;
             for (int ring = rings - 1; ring >= 0; ring--) {
                 float ringRadius = size * ((ring + 1) / (float)rings);
@@ -106,11 +110,8 @@ public class AfterimageRenderer {
                     double angle1 = (s / (double)segments) * Math.PI * 2f;
                     double angle2 = ((s + 1) / (double)segments) * Math.PI * 2f;
 
-                    // Add distortion — afterimages are warped, not perfect circles
                     float distort1 = 0.85f + (float)(Math.sin(now * 0.003f + s * 0.7f + i * 3f) * 0.15f);
                     float distort2 = 0.85f + (float)(Math.cos(now * 0.0025f + s * 0.5f + i * 2f) * 0.15f);
-
-                    buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
 
                     buf.vertex(afterimageX[i], afterimageY[i], 0).color(r, g, b, ringAlpha * 1.3f).endVertex();
                     buf.vertex(
@@ -124,9 +125,13 @@ public class AfterimageRenderer {
                         0
                     ).color(r, g, b, ringAlpha * 0.9f).endVertex();
 
-                    tess.end();
+                    any = true;
                 }
             }
+        }
+
+        if (any) {
+            tess.end();
         }
 
         RenderSystem.enableDepthTest();

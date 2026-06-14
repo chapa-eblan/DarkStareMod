@@ -104,9 +104,13 @@ public class BreathingFogRenderer {
             }
         }
 
-        // Draw creeping tendrils — thin dark lines that extend from fog patches toward center
+        // Draw creeping tendrils — batched into a single draw call with stable pseudo-random.
         if (intensity > 0.8f) {
             float tendrilAlpha = (intensity - 0.8f) * 1.5f;
+
+            buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+            boolean anyTendril = false;
+
             for (int i = 0; i < FOG_PATCHES / 2; i++) {
                 double driftX = Math.sin(now * 0.15f + fogSeedsX[i] * 0.01f) * w * 0.3f;
                 double driftY = Math.cos(now * 0.12f + fogSeedsY[i] * 0.01f) * h * 0.3f;
@@ -114,9 +118,11 @@ public class BreathingFogRenderer {
                 float startX = (float)(fogSeedsX[i] % w + driftX);
                 float startY = (float)(fogSeedsY[i] % h + driftY);
 
-                // Tendril extends toward center of screen with organic curve
                 double angleToCenter = Math.atan2(h / 2f - startY, w / 2f - startX);
-                float tendrilLength = 80f + (float)(Math.random() * 120f) * intensity;
+
+                // Deterministic pseudo-random for length and width so tendrils evolve smoothly.
+                long seed = i * 7919L ^ (long)(now * 0.3f);
+                float tendrilLength = 80f + (float)((seed & 0x3FFFFF) / (double)0x3FFFFF * 120f) * intensity;
 
                 int segments = 6;
                 float currentX = startX;
@@ -135,11 +141,10 @@ public class BreathingFogRenderer {
 
                     if (segAlpha < 0.01f) break;
 
-                    // Draw as thin line using two triangles
                     double perpAngle = segAngle + Math.PI / 2f;
-                    float halfW = 1f + (float)(Math.random() * 2f);
 
-                    buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+                    long wSeed = seed ^ (long)(seg * 268435459L);
+                    float halfW = 1f + (float)((wSeed & 0x3FFFFF) / (double)0x3FFFFF * 2f);
 
                     float r = 0.03f;
                     float g = 0.02f;
@@ -166,11 +171,15 @@ public class BreathingFogRenderer {
                         0
                     ).color(r, g, b, segAlpha * 1.05f).endVertex();
 
-                    tess.end();
+                    anyTendril = true;
 
                     currentX = nextX;
                     currentY = nextY;
                 }
+            }
+
+            if (anyTendril) {
+                tess.end();
             }
         }
 

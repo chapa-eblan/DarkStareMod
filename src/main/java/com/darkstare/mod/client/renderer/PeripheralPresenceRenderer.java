@@ -219,39 +219,36 @@ public class PeripheralPresenceRenderer {
         }
     }
 
+    // Deterministic pseudo-random for eye glow to avoid frame-to-frame flicker.
     private static void drawEyes(BufferBuilder buf, Tesselator tess, float x, float y, float size, float alpha) {
-        // Draw two small red dots — like glowing eyes in darkness
         float eyeSpacing = size * 1.5f;
 
-        for (int e = -1; e <= 1; e += 2) {
-            float ex = x + e * eyeSpacing / 2f;
+        // Use a stable per-eye pseudo-random derived from position and size so glow is consistent frame-to-frame.
+        long eyeSeed = (long)(x * 7919 + y * 6271 + size * 3571);
 
-            // Eye glow — small red circle
+        for (int eIdx = -1; eIdx <= 1; eIdx += 2) {
+            float ex = x + eIdx * eyeSpacing / 2f;
+
+            long seed = eyeSeed ^ (long)(eIdx * 268435459L);
+            float r = 0.4f + (float)((seed & 0x3FFFFF) / (double)0x3FFFFF * 0.3f);
+            float g = 0.05f;
+            float b = 0.02f;
+
             int segments = 6;
-            for (int s = 0; s < segments; s++) {
-                double angle1 = (s / (double)segments) * Math.PI * 2f;
-                double angle2 = ((s + 1) / (double)segments) * Math.PI * 2f;
 
-                buf.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+            buf.begin(VertexFormat.Mode.TRIANGLE_FAN, DefaultVertexFormat.POSITION_COLOR);
 
-                float r = 0.4f + (float)(Math.random() * 0.3f);
-                float g = 0.05f;
-                float b = 0.02f;
+            buf.vertex(ex, y, 0).color(r, g, b, alpha * 1.5f).endVertex();
 
-                buf.vertex(ex, y, 0).color(r, g, b, alpha * 1.5f).endVertex();
-                buf.vertex(
-                    ex + (float)Math.cos(angle1) * size,
-                    y + (float)Math.sin(angle1) * size,
-                    0
-                ).color(r, g, b, alpha).endVertex();
-                buf.vertex(
-                    ex + (float)Math.cos(angle2) * size,
-                    y + (float)Math.sin(angle2) * size,
-                    0
-                ).color(r, g, b, alpha * 0.8f).endVertex();
+            for (int s = 0; s <= segments; s++) {
+                double angle = (s / (double)segments) * Math.PI * 2f;
+                float ex2 = ex + (float)Math.cos(angle) * size;
+                float ey2 = y + (float)Math.sin(angle) * size;
 
-                tess.end();
+                buf.vertex(ex2, ey2, 0).color(r * 0.9f, g * 0.5f, b * 0.3f, alpha * 0.8f).endVertex();
             }
+
+            tess.end();
         }
     }
 }

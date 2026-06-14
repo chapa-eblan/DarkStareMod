@@ -73,13 +73,15 @@ public class ScreenTearRenderer {
             }
         }
 
-        // Continuous subtle tearing — thin horizontal lines that appear and disappear rapidly
+        // Continuous subtle tearing — batched into a single draw call with stable pseudo-random heights.
         float tearAlpha = (intensity - 0.75f) * 0.08f;
         if (tearAlpha < 0.01f) {
             RenderSystem.enableDepthTest();
             RenderSystem.depthMask(true);
             return;
         }
+
+        buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         for (int i = 0; i < 4; i++) {
             double flickerPhase = now * 8f + i * 3.7;
@@ -88,46 +90,42 @@ public class ScreenTearRenderer {
             if (flickerAlpha < 0.005f) continue;
 
             float yPos = (float)(Math.sin(now * 2f + i * 1.3) * h * 0.4f + h / 2f);
-            float bandHeight = 0.5f + (float)Math.random() * 1.5f;
 
-            // Subtle color shift — mostly dark with slight red/blue tint
+            // Stable pseudo-random height so tears evolve smoothly instead of flickering randomly.
+            long seed = (long)(now * 3.7f + i * 7919L);
+            float bandHeight = 0.5f + (float)((seed & 0x3FFFFF) / (double)0x3FFFFF * 1.5f);
+
             float r = 0.05f + (i % 3) * 0.02f;
             float g = 0.01f;
             float b = 0.04f + (i % 2) * 0.03f;
 
-            buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-
-            // Slight horizontal displacement to simulate tear
+            // Slight horizontal displacement to simulate tear.
             float offset = (float)((Math.sin(now * 5f + i * 2.1) * 5f));
 
             buf.vertex(offset, yPos - bandHeight / 2f, 0).color(r, g, b, flickerAlpha).endVertex();
             buf.vertex(w + offset, yPos - bandHeight / 2f, 0).color(r, g, b, flickerAlpha * 1.2f).endVertex();
             buf.vertex(w + offset, yPos + bandHeight / 2f, 0).color(r, g, b, flickerAlpha * 0.8f).endVertex();
             buf.vertex(offset, yPos + bandHeight / 2f, 0).color(r, g, b, flickerAlpha * 1.1f).endVertex();
-
-            tess.end();
         }
 
-        // Vertical scan lines — very thin horizontal lines that scroll down the screen
+        // Vertical scan lines — very thin horizontal lines that scroll down the screen.
         for (int i = 0; i < 3; i++) {
             double scanPhase = now * 3f + i * 2.5;
             float yPos = (float)((Math.sin(scanPhase) * h * 0.5f + h / 2f));
 
-            // Scan lines are very thin and barely visible — just enough to feel wrong
+            // Scan lines are very thin and barely visible — just enough to feel wrong.
             float scanAlpha = tearAlpha * 0.3f;
             if (scanAlpha < 0.003f) continue;
 
-            buf.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
-
-            // White-ish scan line with slight color variation
+            // White-ish scan line with slight color variation.
             float brightness = 0.15f + i * 0.05f;
             buf.vertex(0, yPos - 0.25f, 0).color(brightness, brightness * 0.9f, brightness * 1.1f, scanAlpha).endVertex();
             buf.vertex(w, yPos - 0.25f, 0).color(brightness, brightness * 0.9f, brightness * 1.1f, scanAlpha).endVertex();
             buf.vertex(w, yPos + 0.25f, 0).color(brightness, brightness * 0.9f, brightness * 1.1f, scanAlpha).endVertex();
             buf.vertex(0, yPos + 0.25f, 0).color(brightness, brightness * 0.9f, brightness * 1.1f, scanAlpha).endVertex();
-
-            tess.end();
         }
+
+        tess.end();
 
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
