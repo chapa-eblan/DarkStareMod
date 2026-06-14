@@ -7,8 +7,7 @@ license="MIT"
     version = "${file.jarVersion}"
     displayName = "DarkStare"
     logoFile = "darkstare.png"
-    authors = "DarkStare Team"
-    credits = "Built with Forge for Minecraft 1.20.1"
+    authors = "chapa-eblan"
     description = '''
         A subtle horror effect when staring into dark passages:
         - Gradual FOV zoom (tension)
