@@ -6,7 +6,9 @@ license="MIT"
     modId = "darkstare"
     version = "${file.jarVersion}"
     displayName = "DarkStare"
-    authors = "You"
+    logoFile = "darkstare.png"
+    authors = "DarkStare Team"
+    credits = "Built with Forge for Minecraft 1.20.1"
     description = '''
         A subtle horror effect when staring into dark passages:
         - Gradual FOV zoom (tension)
@@ -14,7 +16,8 @@ license="MIT"
         - Faint eyes watching from the darkness
         - Atmospheric vignette
 
-        Fully client-side. No server changes, no mixins. Configurable.'''
+        Fully client-side. No server changes, no mixins. Configurable.
+    '''
 
 [[dependencies.darkstare]]
     modId = "forge"
